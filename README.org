@@ -1,0 +1,437 @@
+* Proyecto Sunde Diana (i.MX53)
+
+** Objetivo
+Construir un cliente fino basado en i.MX53 con el siguiente flujo:
+
+1. Detección y funcionamiento de NAND en el núcleo
+2. Salida HDMI funcional en el núcleo
+3. Sistema mínimo (Buildroot)
+4. Cliente remoto (X2Go / RDP)
+5. GPIO (LED y Switch para debug/control)
+
+---
+
+* Fase 1: Detección de NAND
+
+** Objetivo
+Que el núcleo detecte y pueda interactuar con la NAND
+
+** Tareas
+
+*** Soporte en kernel
+- [ ] Habilitar MTD:
+  - CONFIG_MTD
+  - CONFIG_MTD_NAND
+  - Driver NAND i.MX53
+
+*** Verificación
+- [ ] Revisar:
+#+begin_src
+dmesg | grep -i nand
+cat /proc/mtd
+#+end_src
+
+*** Herramientas
+- [ ] Incluir mtd-utils
+
+*** Pruebas básicas
+- [ ] Leer NAND:
+#+begin_src
+nanddump /dev/mtd0
+#+end_src
+
+- [ ] Borrar NAND (cuidado, probar con paginas al final del dispositivo):
+#+begin_src
+flash_erase /dev/mtd7 0 0
+#+end_src
+
+*** Particionado
+- [ ] Definir un nuevo particionado:
+  - mtd0: u-boot
+  - mtd1: kernel
+  - mtd2: rootfs
+
+*** Filesystem
+- [ ] Migrar a UBIFS
+
+*** U-Boot
+
+- [ ] Configurar:
+  - bootcmd
+  - bootargs
+
+Ejemplo:
+#+begin_src
+console=ttymxc0,115200 root=ubi0:rootfs rootfstype=ubifs
+#+end_src
+
+- [ ] Boot desde NAND funcionando
+
+---
+
+* Fase 2: Salida HDMI (SiI9022)
+
+** Objetivo
+Video estable por HDMI
+
+** Tareas
+
+*** I2C
+
+- [ ] Verificar dispositivo 0x39:
+#+begin_src
+i2cdetect -y 0
+i2cget -y 0 0x39 0x00
+#+end_src
+
+*** Validación eléctrica
+
+- [ ] HSYNC correcto (~3.0V)
+- [ ] DE correcto (~2.4V)
+- [ ] Pixel clock estable
+
+*** Comparación con Linux
+
+- [ ] Analizar driver funcional (kernel 2.6.35)
+- [ ] Extraer:
+  - Secuencia de init
+  - Timings
+
+*** Inicialización
+
+- [ ] Reproducir init del SiI9022
+- [ ] Configurar resolución fija (ej: 1024x768)
+
+*** Prueba
+
+- [ ] Mostrar framebuffer
+- [ ] Test patrón de video
+
+---
+
+* Fase 3: Sistema mínimo (Buildroot)
+
+** Objetivo
+RootFS mínimo funcional en NAND
+
+** Setup
+
+- [ ] Clonar:
+#+begin_src
+git clone https://github.com/buildroot/buildroot.git
+#+end_src
+
+- [ ] Configurar:
+#+begin_src
+make menuconfig
+#+end_src
+
+---
+
+** Configuración clave
+
+*** Toolchain
+- [ ] ARM Cortex-A8
+- [ ] ABI correcto
+
+*** Kernel
+- [ ] Soporte:
+  - NAND
+  - I2C
+  - Video
+
+---
+
+** RootFS
+
+- [ ] BusyBox
+- [ ] dropbear (SSH)
+- [ ] mtd-utils
+
+---
+
+** Red
+
+- [ ] DHCP automático
+
+---
+
+** Video
+
+- [ ] Framebuffer funcional
+- [ ] (Opcional) Xorg mínimo
+
+---
+
+** Build
+
+- [ ] Compilar:
+#+begin_src
+make
+#+end_src
+
+---
+
+** Deploy
+
+- [ ] Grabar kernel en NAND
+- [ ] Grabar rootfs (UBIFS)
+- [ ] Boot completo
+
+---
+
+* Fase 4: Cliente remoto
+
+** Objetivo
+Conectar automáticamente al servidor
+
+** Opciones
+
+*** RDP (recomendado)
+- [ ] Instalar freerdp
+- [ ] Ejecutar:
+#+begin_src
+xfreerdp /v:SERVER_IP /f
+#+end_src
+
+*** X2Go (opcional)
+- [ ] Evaluar cliente disponible
+
+---
+
+** Auto-start
+
+- [ ] Script de inicio:
+
+#+begin_src sh
+#!/bin/sh
+udhcpc
+startx
+#+end_src
+
+---
+
+** Inicio automático del cliente
+
+Opción 1 (con i3):
+#+begin_src
+exec --no-startup-id xfreerdp /v:SERVER_IP /f
+#+end_src
+
+Opción 2 (sin window manager, recomendado):
+#+begin_src sh
+#!/bin/sh
+xfreerdp /v:SERVER_IP /f
+#+end_src
+
+---
+
+* Fase 5: GPIO (LED y Switch)
+
+** Objetivo
+Debug y control del sistema
+
+---
+
+** LED
+
+*** Identificación
+
+- [ ] Encontrar GPIO asociado
+
+*** Test
+
+#+begin_src
+echo <N> > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio<N>/direction
+echo 1 > /sys/class/gpio/gpio<N>/value
+#+end_src
+
+---
+
+*** Heartbeat
+
+- [ ] Script simple:
+
+#+begin_src sh
+while true; do
+  echo 1 > /sys/class/gpio/gpio<N>/value
+  sleep 0.5
+  echo 0 > /sys/class/gpio/gpio<N>/value
+  sleep 0.5
+done
+#+end_src
+
+---
+
+*** Mejor opción (kernel)
+
+- [ ] Device tree:
+
+#+begin_src dts
+leds {
+    compatible = "gpio-leds";
+    heartbeat {
+        gpios = <&gpioX Y GPIO_ACTIVE_HIGH>;
+        linux,default-trigger = "heartbeat";
+    };
+};
+#+end_src
+
+---
+
+** Switch
+
+*** Lectura
+
+#+begin_src
+echo <N> > /sys/class/gpio/export
+echo in > /sys/class/gpio/gpio<N>/direction
+cat /sys/class/gpio/gpio<N>/value
+#+end_src
+
+---
+
+*** Uso en boot
+
+- [ ] Modo recovery:
+
+#+begin_src sh
+if [ "$(cat /sys/class/gpio/gpio<N>/value)" = "1" ]; then
+  /bin/sh
+fi
+#+end_src
+
+---
+
+* Fase 6: Integración final
+
+** Objetivo
+Sistema completamente autónomo
+
+** Checklist
+
+- [ ] Detección de NAND
+- [ ] HDMI funcionando
+- [ ] RootFS mínimo operativo
+- [ ] Red OK
+- [ ] Cliente remoto automático
+- [ ] LED heartbeat activo
+- [ ] Switch funcional
+
+---
+
+* Fase 7: Servidor (Thin Client Backend)
+
+** Objetivo
+Proveer entorno gráfico y aplicaciones al cliente fino
+
+---
+
+** Sistema base
+
+- [ ] Instalar Debian 12
+- [ ] Instalar SSH server
+
+---
+
+** Entorno gráfico (X11 + i3)
+
+- [ ] Instalar:
+
+#+begin_src
+apt update
+apt install xorg i3 i3status dmenu xterm
+#+end_src
+
+---
+
+** Configuración de sesión
+
+Archivo:
+~/.xsession
+
+Contenido:
+#+begin_src
+exec i3
+#+end_src
+
+---
+
+** Configuración de acceso remoto
+
+*** Opción A: RDP (recomendado)
+
+- [ ] Instalar:
+#+begin_src
+apt install xrdp
+#+end_src
+
+- [ ] Habilitar:
+#+begin_src
+systemctl enable xrdp
+systemctl start xrdp
+#+end_src
+
+---
+
+*** Opción B: X2Go
+
+- [ ] Instalar:
+#+begin_src
+apt install x2goserver x2goserver-xsession
+#+end_src
+
+---
+
+** Usuario
+
+- [ ] Crear:
+#+begin_src
+adduser thin
+#+end_src
+
+---
+
+** Red
+
+- [ ] Configurar IP fija (ej: 192.168.1.10)
+
+---
+
+** Validación
+
+- [ ] Conexión remota funciona
+- [ ] Escritorio i3 inicia correctamente
+
+---
+
+* Prioridades reales
+
+1. Detección NAND
+2. HDMI
+3. Buildroot mínimo
+4. Cliente remoto
+5. Servidor
+6. GPIO
+
+---
+
+* Notas
+
+- Mantener rootfs lo más chico posible
+- Minimizar escrituras en NAND
+- Usar LED como debug temprano
+
+- Escritorio recomendado:
+  - i3 (liviano y predecible)
+
+- Alternativa extrema:
+  - Sin window manager (solo X + RDP)
+
+- RDP:
+  - Más fácil de integrar en Buildroot
+
+- X2Go:
+  - Mejor rendimiento en redes lentas
+  - Más complejo de integrar en cliente embebido
