@@ -9,8 +9,6 @@ Construir un cliente fino basado en i.MX53 con el siguiente flujo:
 4. Cliente remoto (X2Go / RDP)
 5. GPIO (LED y Switch para debug/control)
 
----
-
 * Fase 1: Detección de NAND
 
 ** Objetivo
