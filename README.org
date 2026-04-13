@@ -105,8 +105,6 @@ i2cget -y 0 0x39 0x00
 - [ ] Mostrar framebuffer
 - [ ] Test patrón de video
 
----
-
 * Fase 3: Sistema mínimo (Buildroot)
 
 ** Objetivo
@@ -124,8 +122,6 @@ git clone https://github.com/buildroot/buildroot.git
 make menuconfig
 #+end_src
 
----
-
 ** Configuración clave
 
 *** Toolchain
@@ -138,28 +134,20 @@ make menuconfig
   - I2C
   - Video
 
----
-
 ** RootFS
 
 - [ ] BusyBox
 - [ ] dropbear (SSH)
 - [ ] mtd-utils
 
----
-
 ** Red
 
 - [ ] DHCP automático
-
----
 
 ** Video
 
 - [ ] Framebuffer funcional
 - [ ] (Opcional) Xorg mínimo
-
----
 
 ** Build
 
@@ -168,15 +156,11 @@ make menuconfig
 make
 #+end_src
 
----
-
 ** Deploy
 
 - [ ] Grabar kernel en NAND
 - [ ] Grabar rootfs (UBIFS)
 - [ ] Boot completo
-
----
 
 * Fase 4: Cliente remoto
 
@@ -195,8 +179,6 @@ xfreerdp /v:SERVER_IP /f
 *** X2Go (opcional)
 - [ ] Evaluar cliente disponible
 
----
-
 ** Auto-start
 
 - [ ] Script de inicio:
@@ -206,8 +188,6 @@ xfreerdp /v:SERVER_IP /f
 udhcpc
 startx
 #+end_src
-
----
 
 ** Inicio automático del cliente
 
@@ -222,14 +202,10 @@ Opción 2 (sin window manager, recomendado):
 xfreerdp /v:SERVER_IP /f
 #+end_src
 
----
-
 * Fase 5: GPIO (LED y Switch)
 
 ** Objetivo
 Debug y control del sistema
-
----
 
 ** LED
 
@@ -245,8 +221,6 @@ echo out > /sys/class/gpio/gpio<N>/direction
 echo 1 > /sys/class/gpio/gpio<N>/value
 #+end_src
 
----
-
 *** Heartbeat
 
 - [ ] Script simple:
@@ -259,8 +233,6 @@ while true; do
   sleep 0.5
 done
 #+end_src
-
----
 
 *** Mejor opción (kernel)
 
@@ -276,8 +248,6 @@ leds {
 };
 #+end_src
 
----
-
 ** Switch
 
 *** Lectura
@@ -288,8 +258,6 @@ echo in > /sys/class/gpio/gpio<N>/direction
 cat /sys/class/gpio/gpio<N>/value
 #+end_src
 
----
-
 *** Uso en boot
 
 - [ ] Modo recovery:
@@ -299,8 +267,6 @@ if [ "$(cat /sys/class/gpio/gpio<N>/value)" = "1" ]; then
   /bin/sh
 fi
 #+end_src
-
----
 
 * Fase 6: Integración final
 
@@ -317,21 +283,15 @@ Sistema completamente autónomo
 - [ ] LED heartbeat activo
 - [ ] Switch funcional
 
----
-
 * Fase 7: Servidor (Thin Client Backend)
 
 ** Objetivo
 Proveer entorno gráfico y aplicaciones al cliente fino
 
----
-
 ** Sistema base
 
 - [ ] Instalar Debian 12
 - [ ] Instalar SSH server
-
----
 
 ** Entorno gráfico (X11 + i3)
 
@@ -342,8 +302,6 @@ apt update
 apt install xorg i3 i3status dmenu xterm
 #+end_src
 
----
-
 ** Configuración de sesión
 
 Archivo:
@@ -353,8 +311,6 @@ Contenido:
 #+begin_src
 exec i3
 #+end_src
-
----
 
 ** Configuración de acceso remoto
 
@@ -371,16 +327,12 @@ systemctl enable xrdp
 systemctl start xrdp
 #+end_src
 
----
-
 *** Opción B: X2Go
 
 - [ ] Instalar:
 #+begin_src
 apt install x2goserver x2goserver-xsession
 #+end_src
-
----
 
 ** Usuario
 
@@ -389,20 +341,14 @@ apt install x2goserver x2goserver-xsession
 adduser thin
 #+end_src
 
----
-
 ** Red
 
 - [ ] Configurar IP fija (ej: 192.168.1.10)
-
----
 
 ** Validación
 
 - [ ] Conexión remota funciona
 - [ ] Escritorio i3 inicia correctamente
-
----
 
 * Prioridades reales
 
@@ -412,8 +358,6 @@ adduser thin
 4. Cliente remoto
 5. Servidor
 6. GPIO
-
----
 
 * Notas
 
