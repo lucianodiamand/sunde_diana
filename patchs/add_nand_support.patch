@@ -1,0 +1,78 @@
+diff --git a/arch/arm/boot/dts/nxp/imx/imx53-diana.dts b/arch/arm/boot/dts/nxp/imx/imx53-diana.dts
+index 19d31c073..8807e6240 100644
+--- a/arch/arm/boot/dts/nxp/imx/imx53-diana.dts
++++ b/arch/arm/boot/dts/nxp/imx/imx53-diana.dts
+@@ -75,23 +75,22 @@ &iomuxc {
+     pinctrl_nand: nandgrp {
+         fsl,pins = <
+             /* Control NFC / NAND */
+-            MX53_PAD_NANDF_WE_B__EMI_NANDF_WE_B        0x1f4
+-            MX53_PAD_NANDF_RE_B__EMI_NANDF_RE_B        0x1f4
+-            MX53_PAD_NANDF_CLE__EMI_NANDF_CLE          0x1f4
+-            MX53_PAD_NANDF_ALE__EMI_NANDF_ALE          0x1f4
+-            MX53_PAD_NANDF_WP_B__EMI_NANDF_WP_B        0x1f4
+-            MX53_PAD_NANDF_RB0__EMI_NANDF_RB_0         0x1f4
+-            MX53_PAD_NANDF_CS0__EMI_NANDF_CS_0         0x1f4
++            MX53_PAD_NANDF_WE_B__EMI_NANDF_WE_B        0x004
++            MX53_PAD_NANDF_RE_B__EMI_NANDF_RE_B        0x004
++            MX53_PAD_NANDF_CLE__EMI_NANDF_CLE          0x004
++            MX53_PAD_NANDF_ALE__EMI_NANDF_ALE          0x004
++            MX53_PAD_NANDF_CS0__EMI_NANDF_CS_0         0x004
++            MX53_PAD_NANDF_RB0__EMI_NANDF_RB_0         0x180
+ 
+             /* Datos 8-bit: PATA_DATA0..7 como EMI_NANDF_D_0..7 */
+-            MX53_PAD_PATA_DATA0__EMI_NANDF_D_0         0x1f4
+-            MX53_PAD_PATA_DATA1__EMI_NANDF_D_1         0x1f4
+-            MX53_PAD_PATA_DATA2__EMI_NANDF_D_2         0x1f4
+-            MX53_PAD_PATA_DATA3__EMI_NANDF_D_3         0x1f4
+-            MX53_PAD_PATA_DATA4__EMI_NANDF_D_4         0x1f4
+-            MX53_PAD_PATA_DATA5__EMI_NANDF_D_5         0x1f4
+-            MX53_PAD_PATA_DATA6__EMI_NANDF_D_6         0x1f4
+-            MX53_PAD_PATA_DATA7__EMI_NANDF_D_7         0x1f4
++            MX53_PAD_PATA_DATA0__EMI_NANDF_D_0         0x1fc
++            MX53_PAD_PATA_DATA1__EMI_NANDF_D_1         0x180
++            MX53_PAD_PATA_DATA2__EMI_NANDF_D_2         0x180
++            MX53_PAD_PATA_DATA3__EMI_NANDF_D_3         0x180
++            MX53_PAD_PATA_DATA4__EMI_NANDF_D_4         0x180
++            MX53_PAD_PATA_DATA5__EMI_NANDF_D_5         0x180
++            MX53_PAD_PATA_DATA6__EMI_NANDF_D_6         0x004
++            MX53_PAD_PATA_DATA7__EMI_NANDF_D_7         0x004
+         >;
+     };
+ 
+@@ -171,6 +170,9 @@ hdmi_bridge: hdmi@39 {
+     };
+ };
+ 
++&esdhc3 {
++    status = "disabled";
++};
+ 
+ &tve {
+   dac-supply = <&reg_tve_dac>;
+diff --git a/drivers/mtd/nand/raw/mxc_nand.c b/drivers/mtd/nand/raw/mxc_nand.c
+index 8c56b685b..4bf372242 100644
+--- a/drivers/mtd/nand/raw/mxc_nand.c
++++ b/drivers/mtd/nand/raw/mxc_nand.c
+@@ -611,6 +611,21 @@ static void send_page_v1(struct mtd_info *mtd, unsigned int ops)
+ 
+ static void send_read_id_v3(struct mxc_nand_host *host)
+ {
++	writel(0xff, NFC_V3_FLASH_CMD);
++	writel(NFC_CMD, NFC_V3_LAUNCH);
++	wait_op_done(host, true);
++
++	writel(0x90, NFC_V3_FLASH_CMD);
++	writel(NFC_CMD, NFC_V3_LAUNCH);
++	wait_op_done(host, true);
++
++	writel(0x00, NFC_V3_FLASH_ADDR0);
++	writel(NFC_ADDR, NFC_V3_LAUNCH);
++	wait_op_done(host, true);
++
++	/* RBA = 0 */
++	writel((readl(NFC_V3_CONFIG1) & ~(0x7 << 4)), NFC_V3_CONFIG1);
++
+ 	/* Read ID into main buffer */
+ 	writel(NFC_ID, NFC_V3_LAUNCH);
+ 
